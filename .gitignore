@@ -2,6 +2,7 @@
 .env
 *.pkl
 cookies.json
+get_cookies.py
 
 # Python Virtual Environment
 venv/
