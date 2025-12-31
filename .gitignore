@@ -1,0 +1,18 @@
+# Secrets and Credentials
+.env
+*.pkl
+cookies.json
+
+# Python Virtual Environment
+venv/
+ENV/
+bin/
+lib/
+
+# Python Cache (Temporary files)
+__pycache__/
+*.py[cod]
+
+# IDE Settings
+.vscode/
+.idea/
