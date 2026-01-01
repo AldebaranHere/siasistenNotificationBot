@@ -98,7 +98,7 @@ async def background_loop():
                 }
 
             # Find the table
-            waitTableExists = wait.until(EC.presence_of_element_located((By.XPATH, "//h4[@id='next-term-header']/following-sibling::table[1]")))
+            waitTableExists = wait.until(EC.presence_of_element_located((By.XPATH, "//h4[@id='term-header']/following-sibling::table[1]")))
             table = driver.find_element(By.XPATH, "//h4[@id='term-header']/following-sibling::table[1]")
             rows = table.find_elements(By.TAG_NAME, "tr")
 
