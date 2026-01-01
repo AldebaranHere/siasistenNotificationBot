@@ -106,7 +106,6 @@ async def background_loop():
             role_data = {r.name: r.id for r in guild.roles[1:]}
 
             for mk_name, mk_code in mata_kuliah.items():
-                is_not_available = True
                 for row in rows:
                     cells = row.find_elements(By.TAG_NAME, "td")
                     
@@ -125,15 +124,10 @@ async def background_loop():
                             daftar_link = "https://siasisten.cs.ui.ac.id/lowongan/listLowongan/"
 
                         if (mk_code in course_info) and ("Internasional" in course_info) and ("Buka" in status):
-                            is_not_available = False
                             await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Internasional sudah dibuka! Segera daftar di {daftar_link}")
                         elif (mk_code in course_info) and ("Buka" in status):
-                            is_not_available = False
                             await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Reguler sudah dibuka! Segera daftar di {daftar_link}")
                 
-                if is_not_available:
-                    await channel.send(f"<@&{role_data[mk_name]}> {mk_name} belum dibuka atau sudah penuh")
-
             await channel.send(f"Pengecekan selesai! Tunggu 3 menit untuk pengecekan selanjutnya.")
             await channel.send(f"=================================================================")
         
