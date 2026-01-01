@@ -113,11 +113,11 @@ async def background_loop():
                     if len(cells) > 0:
                         
                         course_info = cells[1].text
-                        status = cells[3].text.strip()
+                        status = cells[5].text.strip()
 
                         try:
                             # Find the 'a' tag specifically in the last cell of THIS row
-                            link_element = cells[8].find_element(By.TAG_NAME, "a")
+                            link_element = cells[10].find_element(By.TAG_NAME, "a")
                             daftar_link = link_element.get_attribute("href")
                         except:
                             # Fallback if the link isn't found for some reason
