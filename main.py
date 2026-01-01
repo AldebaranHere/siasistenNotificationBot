@@ -9,6 +9,8 @@ import pickle
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import platform
 
 load_dotenv()
@@ -72,38 +74,36 @@ async def background_loop():
                     cookie['expiry'] = int(cookie['expiry'])
                 driver.add_cookie(cookie)
 
-            time.sleep(2)
             driver.refresh()
 
-            time.sleep(2)
-            driver.find_element(By.ID, "id_username").send_keys(SIASISTEN_USERNAME)
-            driver.find_element(By.ID, "id_password").send_keys(SIASISTEN_PASSWORD)
+            wait = WebDriverWait(driver, 10)
+            waitUsernameExists = wait.until(EC.presence_of_element_located((By.ID, "id_username")))
+            waitUsernameExists.send_keys(SIASISTEN_USERNAME)
+            waitPasswordExists = wait.until(EC.presence_of_element_located((By.ID, "id_password")))
+            waitPasswordExists.send_keys(SIASISTEN_PASSWORD)
             driver.find_element(By.CSS_SELECTOR, "input[value='login']").click()
 
-            time.sleep(2)
-            driver.refresh()
-
             mata_kuliah = {
-                "SDA": "CSGE602040",
-                "MD2": "CSGE601011",
-                "Kalkulus2": "CSCM601213",
-                "POK": "CSCM601252",
-                "DDP2": "CSGE601021",
+                    "SDA": "CSGE602040",
+                    "MD2": "CSGE601011",
+                    "Kalkulus2": "CSCM601213",
+                    "POK": "CSCM601252",
+                    "DDP2": "CSGE601021",
 
-                "Kalkulus1": "CSGE601012",
-                "DDP1": "CSGE601020",
-                "PSD": "CSCM601150",
-                "MD1": "CSGE601010",
-                "ALIN": "CSGE602012"
-            }
+                    "Kalkulus1": "CSGE601012",
+                    "DDP1": "CSGE601020",
+                    "PSD": "CSCM601150",
+                    "MD1": "CSGE601010",
+                    "ALIN": "CSGE602012"
+                }
+
+            # Find the table
+            waitTableExists = wait.until(EC.presence_of_element_located((By.XPATH, "//h4[@id='next-term-header']/following-sibling::table[1]")))
+            table = driver.find_element(By.XPATH, "//h4[@id='term-header']/following-sibling::table[1]")
+            rows = table.find_elements(By.TAG_NAME, "tr")
+
             guild = channel.guild
             role_data = {r.name: r.id for r in guild.roles[1:]}
-
-            time.sleep(2)
-            # Find the table
-            # Syntax is verbose due to the HTML content of the webpage
-            table = driver.find_element(By.XPATH, "//h4[@id='next-term-header']/following-sibling::table[1]")
-            rows = table.find_elements(By.TAG_NAME, "tr")
 
             for mk_name, mk_code in mata_kuliah.items():
                 is_not_available = True
@@ -116,9 +116,20 @@ async def background_loop():
                         course_info = cells[1].text
                         status = cells[3].text.strip()
 
-                        if mk_code in course_info and "Buka" in status:
+                        try:
+                            # Find the 'a' tag specifically in the last cell of THIS row
+                            link_element = cells[8].find_element(By.TAG_NAME, "a")
+                            daftar_link = link_element.get_attribute("href")
+                        except:
+                            # Fallback if the link isn't found for some reason
+                            daftar_link = "https://siasisten.cs.ui.ac.id/lowongan/listLowongan/"
+
+                        if (mk_code in course_info) and ("Internasional" in course_info) and ("Buka" in status):
                             is_not_available = False
-                            await channel.send(f"<@&{role_data[mk_name]}> {mk_name} sudah dibuka! Segera daftar di https://siasisten.cs.ui.ac.id/lowongan/listLowongan/")
+                            await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Internasional sudah dibuka! Segera daftar di {daftar_link}")
+                        elif (mk_code in course_info) and ("Buka" in status):
+                            is_not_available = False
+                            await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Reguler sudah dibuka! Segera daftar di {daftar_link}")
                 
                 if is_not_available:
                     await channel.send(f"<@&{role_data[mk_name]}> {mk_name} belum dibuka atau sudah penuh")
