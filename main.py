@@ -91,7 +91,7 @@ async def background_loop():
 
         try:
             if platform.system() == "Linux":
-                service = Service(ChromeDriverManager().install())
+                service = Service("/usr/bin/chromedriver")
                 driver = webdriver.Chrome(service=service, options=chrome_options)
             else:
                 # Use Windows/MacOS
