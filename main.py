@@ -2,35 +2,39 @@ import os
 from dotenv import load_dotenv
 import discord
 from selenium import webdriver
-import time
 from discord.ext import commands
 from discord.ext import tasks
-import pickle
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import platform
+from webdriver_manager.chrome import ChromeDriverManager
 
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 SIASISTEN_USERNAME = os.getenv('SIASISTEN_USERNAME')
 SIASISTEN_PASSWORD = os.getenv('SIASISTEN_PASSWORD')
+SIASISTEN_URL = os.getenv('SIASISTEN_URL')
 INFO_MATKUL = int(os.getenv('INFO_MATKUL'))
+GUILD_ID = int(os.getenv('GUILD_ID'))
 
 chrome_options = Options()
-chrome_options.add_argument("--headless")
-chrome_options.add_argument("--disable-gpu")
-chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--headless=new")  
+chrome_options.add_argument("--no-sandbox")    
+chrome_options.add_argument("--disable-dev-shm-usage") 
+chrome_options.add_argument("--disable-gpu")   
+chrome_options.add_argument("--window-size=1920,1080")
+chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
 class Client(commands.Bot):
     async def on_ready(self):
         print(f"Logged in as {self.user}!")
 
         try:
-            guild = discord.Object(id=1455503949611401463)
+            guild = discord.Object(id=GUILD_ID)
             synced = await self.tree.sync(guild=guild)
             print(f"Synced {len(synced)} commands to the guild {guild.id}.")
 
@@ -44,35 +48,29 @@ intents.message_content = True
 client = Client(command_prefix="!", intents = intents)
 
 CHANNEL_ID=INFO_MATKUL
-@tasks.loop(minutes=3.0)
+@tasks.loop(minutes=5.0)
 async def background_loop():
     await client.wait_until_ready()
     channel = client.get_channel(CHANNEL_ID)
 
     if channel:
 
-        await channel.send(f"=================================================================")
+        await channel.send(f"=====================================================================================================================")
         await channel.send(f"Pengecekan dimulai! Simak informasi berikut:")
 
-        if platform.system() == "Linux":
-            # Use case: PythonAnywhere or a Linux server
-            chrome_options.binary_location = "/usr/bin/chromium-browser"
-            service = Service(executable_path="/usr/bin/chromedriver")
-            driver = webdriver.Chrome(service=service, options=chrome_options)
-        else:
-            # Automatic Windows/Mac detection
-            driver = webdriver.Chrome(options=chrome_options)
+        try:
+            if platform.system() == "Linux":
+                service = Service(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=service, options=chrome_options)
+            else:
+                # Use Windows/MacOS
+                driver = webdriver.Chrome(options=chrome_options)
+        except Exception as e:
+            print(f"Error occurred while assigning the webdriver: {e}")
+            return
 
         try:
-            driver.get("https://siasisten.cs.ui.ac.id/lowongan/listLowongan/")
-
-            with open("cookies.pkl", "rb") as file:
-                cookies = pickle.load(file)
-
-            for cookie in cookies:
-                if 'expiry' in cookie:
-                    cookie['expiry'] = int(cookie['expiry'])
-                driver.add_cookie(cookie)
+            driver.get(SIASISTEN_URL)
 
             driver.refresh()
 
@@ -94,7 +92,18 @@ async def background_loop():
                     "DDP1": "CSGE601020",
                     "PSD": "CSCM601150",
                     "MD1": "CSGE601010",
-                    "ALIN": "CSGE602012"
+                    "ALIN": "CSGE602012",
+
+                    "BASDAT": "CSGE602070",
+                    "SISTER": "CSGE602024",
+                    "PKPL": "CSGE602023",
+                    "TBA": "CSCM602241",
+                    "ADPRO": "CSCM602223",
+
+                    "KASDAD": "CSGE603130",
+                    "JARKOM": "CSCM603154",
+                    "ANUM": "CSCM603117",
+                    "DAA": "CSCM603142",
                 }
 
             # Find the table
@@ -104,33 +113,42 @@ async def background_loop():
 
             guild = channel.guild
             role_data = {r.name: r.id for r in guild.roles[1:]}
+            course_codes = set(mata_kuliah.values())
+            mk_code_to_name = {v: k for k, v in mata_kuliah.items()}
 
-            for mk_name, mk_code in mata_kuliah.items():
-                for row in rows:
-                    cells = row.find_elements(By.TAG_NAME, "td")
+            for row in rows:
+                cells = row.find_elements(By.TAG_NAME, "td")
+                
+                # Skip <th> header rows
+                if len(cells) > 0:
                     
-                    # Skip <th> header rows
-                    if len(cells) > 0:
-                        
-                        course_info = cells[1].text
-                        status = cells[5].text.strip()
+                    course_info = cells[1].text
+                    mk_code = course_info.split()[0]
+                    mk_name = mk_code_to_name.get(mk_code, "Unknown course")
+                    status = cells[5].text.strip()
 
-                        try:
-                            # Find the 'a' tag specifically in the last cell of THIS row
-                            link_element = cells[10].find_element(By.TAG_NAME, "a")
-                            daftar_link = link_element.get_attribute("href")
-                        except:
-                            # Fallback if the link isn't found for some reason
-                            daftar_link = "https://siasisten.cs.ui.ac.id/lowongan/listLowongan/"
+                    try:
+                        # Find specific sign up link
+                        link_element = cells[10].find_element(By.TAG_NAME, "a")
+                        daftar_link = link_element.get_attribute("href")
+                    except:
+                        # Default link: the siasisten URL
+                        daftar_link = SIASISTEN_URL
 
-                        if (mk_code in course_info) and ("Internasional" in course_info) and ("Buka" in status):
+                    if (mk_code not in course_codes):
+                        continue
+                    else:
+                        if ("Internasional" in course_info) and ("Buka" in status):
                             await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Internasional sudah dibuka! Segera daftar di {daftar_link}")
-                        elif (mk_code in course_info) and ("Buka" in status):
+                        elif ("Buka" in status):
                             await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Reguler sudah dibuka! Segera daftar di {daftar_link}")
                 
-            await channel.send(f"Pengecekan selesai! Tunggu 3 menit untuk pengecekan selanjutnya.")
-            await channel.send(f"=================================================================")
+            await channel.send(f"Pengecekan selesai! Tunggu 5 menit untuk pengecekan selanjutnya.")
+            await channel.send(f"=====================================================================================================================")
         
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
         finally:
             driver.quit()
 
