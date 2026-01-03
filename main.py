@@ -11,44 +11,75 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import platform
 from webdriver_manager.chrome import ChromeDriverManager
+import logging
 
 load_dotenv()
 
+# Use file logging instead of console
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('bot.log'),
+        logging.StreamHandler()  # Also log to the console
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Validate required environment variables
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 SIASISTEN_USERNAME = os.getenv('SIASISTEN_USERNAME')
 SIASISTEN_PASSWORD = os.getenv('SIASISTEN_PASSWORD')
 SIASISTEN_URL = os.getenv('SIASISTEN_URL')
-INFO_MATKUL = int(os.getenv('INFO_MATKUL'))
-GUILD_ID = int(os.getenv('GUILD_ID'))
+INFO_MATKUL = os.getenv('INFO_MATKUL')
+GUILD_ID = os.getenv('GUILD_ID')
+
+# Validate critical environment variables
+if not all([DISCORD_TOKEN, SIASISTEN_USERNAME, SIASISTEN_PASSWORD, SIASISTEN_URL, INFO_MATKUL, GUILD_ID]):
+    logger.error("Missing required environment variables. Check your .env file.")
+    raise ValueError("Missing required environment variables")
+
+try:
+    INFO_MATKUL = int(INFO_MATKUL)
+    GUILD_ID = int(GUILD_ID)
+except ValueError as e:
+    logger.error(f"Invalid format for numeric environment variables: {e}")
+    raise
 
 chrome_options = Options()
 chrome_options.add_argument("--headless=new")  
 chrome_options.add_argument("--no-sandbox")    
 chrome_options.add_argument("--disable-dev-shm-usage") 
-chrome_options.add_argument("--disable-gpu")   
-chrome_options.add_argument("--window-size=1920,1080")
 chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+# RAM-saving flags
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--disable-extensions")
+chrome_options.add_argument("--window-size=1024,768") # smaller screen means less RAM
+chrome_options.add_argument("--proxy-server='direct://'")
+chrome_options.add_argument("--proxy-bypass-list=*")
+chrome_options.add_argument("--blink-settings=imagesEnabled=false") # DO NOT load images
 
 class Client(commands.Bot):
     async def on_ready(self):
-        print(f"Logged in as {self.user}!")
+        logger.info(f"Logged in as {self.user}")
 
         try:
             guild = discord.Object(id=GUILD_ID)
             synced = await self.tree.sync(guild=guild)
-            print(f"Synced {len(synced)} commands to the guild {guild.id}.")
+            logger.info(f"Synced {len(synced)} commands to the guild {guild.id}")
 
         except Exception as e:
-            print(f"Error syncing commands: {e}")
+            logger.error(f"Error syncing commands: {e}", exc_info=True)
         
-        background_loop.start()
+        if not background_loop.is_running():
+            background_loop.start()
 
 intents = discord.Intents.default()
 intents.message_content = True
 client = Client(command_prefix="!", intents = intents)
 
 CHANNEL_ID=INFO_MATKUL
-@tasks.loop(minutes=5.0)
+@tasks.loop(minutes=10.0)
 async def background_loop():
     await client.wait_until_ready()
     channel = client.get_channel(CHANNEL_ID)
@@ -66,7 +97,8 @@ async def background_loop():
                 # Use Windows/MacOS
                 driver = webdriver.Chrome(options=chrome_options)
         except Exception as e:
-            print(f"Error occurred while assigning the webdriver: {e}")
+            logger.error(f"Error initializing webdriver: {e}", exc_info=True)
+            await channel.send("Terjadi kesalahan saat pengecekan. Mohon tunggu pengecekan selanjutnya.")
             return
 
         try:
@@ -75,11 +107,29 @@ async def background_loop():
             driver.refresh()
 
             wait = WebDriverWait(driver, 10)
-            waitUsernameExists = wait.until(EC.presence_of_element_located((By.ID, "id_username")))
-            waitUsernameExists.send_keys(SIASISTEN_USERNAME)
-            waitPasswordExists = wait.until(EC.presence_of_element_located((By.ID, "id_password")))
-            waitPasswordExists.send_keys(SIASISTEN_PASSWORD)
-            driver.find_element(By.CSS_SELECTOR, "input[value='login']").click()
+            
+            try:
+                username_field = wait.until(EC.presence_of_element_located((By.ID, "id_username")))
+                username_field.send_keys(SIASISTEN_USERNAME)
+            except Exception as e:
+                logger.error("Failed to locate username field. The website may have changed.", exc_info=True)
+                await channel.send("Terjadi kesalahan saat pengecekan. Mohon tunggu pengecekan selanjutnya.")
+                return
+                
+            try:
+                password_field = wait.until(EC.presence_of_element_located((By.ID, "id_password")))
+                password_field.send_keys(SIASISTEN_PASSWORD)
+            except Exception as e:
+                logger.error("Failed to locate password field. The website may have changed.", exc_info=True)
+                await channel.send("Terjadi kesalahan saat pengecekan. Mohon tunggu pengecekan selanjutnya.")
+                return
+            
+            try:
+                driver.find_element(By.CSS_SELECTOR, "input[value='login']").click()
+            except Exception as e:
+                logger.error("Failed to click login button. The website may have changed.", exc_info=True)
+                await channel.send("Terjadi kesalahan saat pengecekan. Mohon tunggu pengecekan selanjutnya.")
+                return
 
             mata_kuliah = {
                     "SDA": "CSGE602040",
@@ -124,35 +174,49 @@ async def background_loop():
                     
                     course_info = cells[1].text
                     mk_code = course_info.split()[0]
-                    mk_name = mk_code_to_name.get(mk_code, "Unknown course")
+                    mk_name = mk_code_to_name.get(mk_code, None)
                     status = cells[5].text.strip()
+
+                    # Skip if course not in our tracking list
+                    if mk_code not in course_codes or mk_name is None:
+                        continue
 
                     try:
                         # Find specific sign up link
                         link_element = cells[10].find_element(By.TAG_NAME, "a")
                         daftar_link = link_element.get_attribute("href")
-                    except:
+                    except Exception:
                         # Default link: the siasisten URL
                         daftar_link = SIASISTEN_URL
 
-                    if (mk_code not in course_codes):
+                    # Verify role exists before sending notification
+                    if mk_name not in role_data:
+                        logger.warning(f"Role '{mk_name}' not found in guild. Skipping notification.")
                         continue
-                    else:
-                        if ("Internasional" in course_info) and ("Buka" in status):
-                            await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Internasional sudah dibuka! Segera daftar di {daftar_link}")
-                        elif ("Buka" in status):
-                            await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Reguler sudah dibuka! Segera daftar di {daftar_link}")
+
+                    if ("Internasional" in course_info) and ("Buka" in status):
+                        await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Internasional sudah dibuka! Segera daftar di {daftar_link}")
+                    elif ("Buka" in status):
+                        await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Reguler sudah dibuka! Segera daftar di {daftar_link}")
                 
-            await channel.send(f"Pengecekan selesai! Tunggu 5 menit untuk pengecekan selanjutnya.")
+            await channel.send(f"Pengecekan selesai! Tunggu 10 menit untuk pengecekan selanjutnya.")
             await channel.send(f"=====================================================================================================================")
         
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logger.error(f"Error during course checking: {e}", exc_info=True)
+            await channel.send("Terjadi kesalahan saat pengecekan. Mohon tunggu pengecekan selanjutnya.")
 
         finally:
-            driver.quit()
+            try:
+                driver.quit()
+            except Exception as e:
+                logger.error(f"Error closing webdriver: {e}", exc_info=True)
 
     else:
-        print(f"Channel with ID {CHANNEL_ID} not found.")
+        logger.warning(f"Channel with ID {CHANNEL_ID} not found.")
                  
-client.run(DISCORD_TOKEN)
+try:
+    client.run(DISCORD_TOKEN)
+except Exception as e:
+    logger.critical(f"Failed to start bot: {e}", exc_info=True)
+    raise
