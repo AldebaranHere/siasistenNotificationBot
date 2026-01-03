@@ -1,5 +1,6 @@
 # Secrets and Credentials
 .env
+bot.log
 
 # Python Virtual Environment
 venv/

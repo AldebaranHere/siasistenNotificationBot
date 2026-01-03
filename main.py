@@ -1,16 +1,12 @@
 import os
 from dotenv import load_dotenv
 import discord
-from selenium import webdriver
 from discord.ext import commands
 from discord.ext import tasks
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 import platform
-from webdriver_manager.chrome import ChromeDriverManager
+import requests
+from bs4 import BeautifulSoup
+import time
 import logging
 
 load_dotenv()
@@ -31,11 +27,13 @@ DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 SIASISTEN_USERNAME = os.getenv('SIASISTEN_USERNAME')
 SIASISTEN_PASSWORD = os.getenv('SIASISTEN_PASSWORD')
 SIASISTEN_URL = os.getenv('SIASISTEN_URL')
+SIASISTEN_LOGIN_URL=os.getenv('SIASISTEN_LOGIN_URL')
+SIASISTEN_ROOT_URL=os.getenv('SIASISTEN_ROOT_URL')
 INFO_MATKUL = os.getenv('INFO_MATKUL')
 GUILD_ID = os.getenv('GUILD_ID')
 
 # Validate critical environment variables
-if not all([DISCORD_TOKEN, SIASISTEN_USERNAME, SIASISTEN_PASSWORD, SIASISTEN_URL, INFO_MATKUL, GUILD_ID]):
+if not all([DISCORD_TOKEN, SIASISTEN_USERNAME, SIASISTEN_PASSWORD, SIASISTEN_URL, INFO_MATKUL, GUILD_ID, SIASISTEN_LOGIN_URL]):
     logger.error("Missing required environment variables. Check your .env file.")
     raise ValueError("Missing required environment variables")
 
@@ -45,19 +43,6 @@ try:
 except ValueError as e:
     logger.error(f"Invalid format for numeric environment variables: {e}")
     raise
-
-chrome_options = Options()
-chrome_options.add_argument("--headless=new")  
-chrome_options.add_argument("--no-sandbox")    
-chrome_options.add_argument("--disable-dev-shm-usage") 
-chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-# RAM-saving flags
-chrome_options.add_argument("--disable-gpu")
-chrome_options.add_argument("--disable-extensions")
-chrome_options.add_argument("--window-size=1024,768") # smaller screen means less RAM
-chrome_options.add_argument("--proxy-server='direct://'")
-chrome_options.add_argument("--proxy-bypass-list=*")
-chrome_options.add_argument("--blink-settings=imagesEnabled=false") # DO NOT load images
 
 class Client(commands.Bot):
     async def on_ready(self):
@@ -90,47 +75,39 @@ async def background_loop():
         await channel.send(f"Pengecekan dimulai! Simak informasi berikut:")
 
         try:
-            if platform.system() == "Linux":
-                service = Service("/usr/bin/chromedriver")
-                driver = webdriver.Chrome(service=service, options=chrome_options)
-            else:
-                # Use Windows/MacOS
-                driver = webdriver.Chrome(options=chrome_options)
+            session = requests.Session()
+            session.headers.update({
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            })
         except Exception as e:
-            logger.error(f"Error initializing webdriver: {e}", exc_info=True)
+            logger.error(f"Error initializing session: {e}", exc_info=True)
             await channel.send("Terjadi kesalahan saat pengecekan. Mohon tunggu pengecekan selanjutnya.")
             return
 
         try:
-            driver.get(SIASISTEN_URL)
-
-            driver.refresh()
-
-            wait = WebDriverWait(driver, 10)
             
-            try:
-                username_field = wait.until(EC.presence_of_element_located((By.ID, "id_username")))
-                username_field.send_keys(SIASISTEN_USERNAME)
-            except Exception as e:
-                logger.error("Failed to locate username field. The website may have changed.", exc_info=True)
-                await channel.send("Terjadi kesalahan saat pengecekan. Mohon tunggu pengecekan selanjutnya.")
-                return
-                
-            try:
-                password_field = wait.until(EC.presence_of_element_located((By.ID, "id_password")))
-                password_field.send_keys(SIASISTEN_PASSWORD)
-            except Exception as e:
-                logger.error("Failed to locate password field. The website may have changed.", exc_info=True)
-                await channel.send("Terjadi kesalahan saat pengecekan. Mohon tunggu pengecekan selanjutnya.")
-                return
-            
-            try:
-                driver.find_element(By.CSS_SELECTOR, "input[value='login']").click()
-            except Exception as e:
-                logger.error("Failed to click login button. The website may have changed.", exc_info=True)
-                await channel.send("Terjadi kesalahan saat pengecekan. Mohon tunggu pengecekan selanjutnya.")
-                return
+            login_url = SIASISTEN_LOGIN_URL
+            destination_url = SIASISTEN_URL
 
+            response = session.get(login_url)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            csrf_token = soup.find('input', {'name': 'csrfmiddlewaretoken'})['value']
+
+            payload = {
+                'username': SIASISTEN_USERNAME,
+                'password': SIASISTEN_PASSWORD,
+                'csrfmiddlewaretoken': csrf_token,
+                'next': destination_url
+            }
+
+            login_post = session.post(login_url, data=payload, headers={'Referer': login_url})
+
+            data_page = session.get(destination_url)
+            final_soup = BeautifulSoup(data_page.text, 'html.parser')
+
+            table_rows = final_soup.find_all('tr')
+            rows_courses_only = table_rows[1:] # Skip header row
+        
             mata_kuliah = {
                     "SDA": "CSGE602040",
                     "MD2": "CSGE601011",
@@ -152,22 +129,17 @@ async def background_loop():
 
                     "KASDAD": "CSGE603130",
                     "JARKOM": "CSCM603154",
-                    "ANUM": "CSCM603117",
+                    "ANUM": "CSCM603217",
                     "DAA": "CSCM603142",
                 }
-
-            # Find the table
-            waitTableExists = wait.until(EC.presence_of_element_located((By.XPATH, "//h4[@id='term-header']/following-sibling::table[1]")))
-            table = driver.find_element(By.XPATH, "//h4[@id='term-header']/following-sibling::table[1]")
-            rows = table.find_elements(By.TAG_NAME, "tr")
 
             guild = channel.guild
             role_data = {r.name: r.id for r in guild.roles[1:]}
             course_codes = set(mata_kuliah.values())
             mk_code_to_name = {v: k for k, v in mata_kuliah.items()}
 
-            for row in rows:
-                cells = row.find_elements(By.TAG_NAME, "td")
+            for row in rows_courses_only:
+                cells = row.find_all('td')
                 
                 # Skip <th> header rows
                 if len(cells) > 0:
@@ -183,8 +155,8 @@ async def background_loop():
 
                     try:
                         # Find specific sign up link
-                        link_element = cells[10].find_element(By.TAG_NAME, "a")
-                        daftar_link = link_element.get_attribute("href")
+                        link_element = cells[10].find_all('a')[0]['href']
+                        daftar_link = SIASISTEN_ROOT_URL+link_element[1:]
                     except Exception:
                         # Default link: the siasisten URL
                         daftar_link = SIASISTEN_URL
@@ -208,9 +180,9 @@ async def background_loop():
 
         finally:
             try:
-                driver.quit()
+                session.close()
             except Exception as e:
-                logger.error(f"Error closing webdriver: {e}", exc_info=True)
+                logger.error(f"Error closing session: {e}", exc_info=True)
 
     else:
         logger.warning(f"Channel with ID {CHANNEL_ID} not found.")
