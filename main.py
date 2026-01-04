@@ -173,7 +173,7 @@ async def background_loop():
                     elif ("Buka" in status):
                         await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Reguler sudah dibuka! Segera daftar di {daftar_link}")
                 
-            await channel.send(f"Pengecekan selesai! Tunggu 10 menit untuk pengecekan selanjutnya.")
+            await channel.send(f"Pengecekan selesai! Tunggu 15 menit untuk pengecekan selanjutnya.")
             await channel.send(f"=====================================================================================================================")
         
         except Exception as e:
