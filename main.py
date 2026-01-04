@@ -64,7 +64,7 @@ intents.message_content = True
 client = Client(command_prefix="!", intents = intents)
 
 CHANNEL_ID=INFO_MATKUL
-@tasks.loop(minutes=10.0)
+@tasks.loop(minutes=15.0)
 async def background_loop():
     await client.wait_until_ready()
     channel = client.get_channel(CHANNEL_ID)
