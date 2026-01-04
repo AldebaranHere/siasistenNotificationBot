@@ -120,6 +120,8 @@ async def background_loop():
                     "PSD": "CSCM601150",
                     "MD1": "CSGE601010",
                     "ALIN": "CSGE602012",
+                    "MANBIS": "CSIM601190",
+                    "KOMBISTEK": "CSIM601191",
 
                     "BASDAT": "CSGE602070",
                     "SISTER": "CSGE602024",
