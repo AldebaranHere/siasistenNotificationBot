@@ -44,11 +44,15 @@ except ValueError as e:
     logger.error(f"Invalid format for numeric environment variables: {e}")
     raise
 
-reaction_role_map = {
+reaction_role_map1 = {
     '🔵': 'SDA', '🔴': 'MD2', '🟡': 'Kalkulus2', '🟢': 'POK', '🟠': 'DDP2',
     '🟦': 'Kalkulus1', '🟥': 'DDP1', '🟨': 'PSD', '🟩': 'MD1', '🟧': 'ALIN', '🟫': 'MANBIS', '🟪': 'KOMBISTEK', '⬛': 'DDAK', '🔳': 'MPKT',
     '💙': 'BASDAT', '❤️': 'SISTER', '💛': 'PKPL', '💚': 'TBA', '🧡': 'ADPRO',
     '🟣': 'KASDAD', '🟤': 'JARKOM', '⚫': 'ANUM', '⚪': 'DAA'
+    }
+
+reaction_role_map2 = {
+    '🟤': 'JARKOM', '⚫': 'ANUM', '⚪': 'DAA'
     }
 
 class Client(commands.Bot):
@@ -80,8 +84,16 @@ class Client(commands.Bot):
         
         emoji = str(reaction.emoji)
 
-        if emoji in reaction_role_map:
-            role_name = reaction_role_map[emoji]
+        if emoji in reaction_role_map1:
+            role_name = reaction_role_map1[emoji]
+            role = discord.utils.get(guild.roles, name=role_name)
+
+            if role and user:
+                await user.add_roles(role)
+                print(f"Assigned {role_name} to {user}")
+        
+        elif emoji in reaction_role_map2:
+            role_name = reaction_role_map2[emoji]
             role = discord.utils.get(guild.roles, name=role_name)
 
             if role and user:
@@ -102,8 +114,16 @@ class Client(commands.Bot):
         
         emoji = str(reaction.emoji)
 
-        if emoji in reaction_role_map:
-            role_name = reaction_role_map[emoji]
+        if emoji in reaction_role_map1:
+            role_name = reaction_role_map1[emoji]
+            role = discord.utils.get(guild.roles, name=role_name)
+
+            if role and user:
+                await user.remove_roles(role)
+                print(f"Removed {role_name} from {user}")
+        
+        elif emoji in reaction_role_map2:
+            role_name = reaction_role_map2[emoji]
             role = discord.utils.get(guild.roles, name=role_name)
 
             if role and user:
@@ -120,8 +140,8 @@ client = Client(command_prefix="!", intents = intents)
 
 GUILD_ID_BOT = discord.Object(id=GUILD_ID)
 
-@client.tree.command(name="course_roles", description="Create a message that lets user choose their course roles", guild=GUILD_ID_BOT)
-async def course_roles(interaction: discord.Interaction):
+@client.tree.command(name="course_roles1", description="Create a message that lets user choose their course roles", guild=GUILD_ID_BOT)
+async def course_roles1(interaction: discord.Interaction):
     # Check if user is admin
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("You must be an admin to run this command.", ephemeral=True)
@@ -150,7 +170,30 @@ async def course_roles(interaction: discord.Interaction):
         ":yellow_heart: PKPL\n"
         ":green_heart: TBA\n"
         ":orange_heart: ADPRO\n"
-        ":purple_circle: KASDAD\n"
+        ":purple_circle: KASDAD\n" # 20 roles mark
+    )
+
+    embed = discord.Embed(title="Pilih Role Mata Kuliah", description=description, color=discord.Color.green())
+    message = await interaction.channel.send(embed=embed)
+
+    for emoji in reaction_role_map1.keys():
+        await message.add_reaction(emoji)
+
+    client.colour_role_message_id = message.id
+
+    await interaction.followup.send("Course role message (part 1) created!", ephemeral=True)
+
+@client.tree.command(name="course_roles2", description="Create a message that lets user choose their course roles", guild=GUILD_ID_BOT)
+async def course_roles2(interaction: discord.Interaction):
+    # Check if user is admin
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("You must be an admin to run this command.", ephemeral=True)
+        return
+    
+    await interaction.response.defer(ephemeral=True)
+    
+    description = (
+        "DESKRIPSI EMOJI MATA KULIAH\n\n"
         ":brown_circle: JARKOM\n"
         ":black_circle: ANUM\n"
         ":white_circle: DAA\n"
@@ -159,14 +202,12 @@ async def course_roles(interaction: discord.Interaction):
     embed = discord.Embed(title="Pilih Role Mata Kuliah", description=description, color=discord.Color.green())
     message = await interaction.channel.send(embed=embed)
 
-    for emoji in reaction_role_map.keys():
+    for emoji in reaction_role_map2.keys():
         await message.add_reaction(emoji)
 
     client.colour_role_message_id = message.id
 
-    await interaction.followup.send("Course role message created!", ephemeral=True)
-
-
+    await interaction.followup.send("Course role message (part 2) created!", ephemeral=True)
 
 CHANNEL_ID=INFO_MATKUL
 @tasks.loop(minutes=15.0)
