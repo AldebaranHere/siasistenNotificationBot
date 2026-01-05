@@ -75,7 +75,7 @@ class Client(commands.Bot):
         if not background_loop.is_running():
             background_loop.start()
     
-    async def on_reaction_add(self, payload):
+    async def on_raw_reaction_add(self, payload):
         if payload.user_id == self.user.id:
             return
         
