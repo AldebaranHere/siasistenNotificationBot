@@ -8,6 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import logging
+import json
 
 load_dotenv()
 
@@ -44,22 +45,30 @@ except ValueError as e:
     logger.error(f"Invalid format for numeric environment variables: {e}")
     raise
 
-reaction_role_map1 = {
-    '🔵': 'SDA', '🔴': 'MD2', '🟡': 'Kalkulus2', '🟢': 'POK', '🟠': 'DDP2',
-    '🟦': 'Kalkulus1', '🟥': 'DDP1', '🟨': 'PSD', '🟩': 'MD1', '🟧': 'ALIN', '🟫': 'MANBIS', '🟪': 'KOMBISTEK', '⬛': 'DDAK', '🔳': 'MPKT',
-    '💙': 'BASDAT', '❤️': 'SISTER', '💛': 'PKPL', '💚': 'TBA', '🧡': 'ADPRO',
-    '🟣': 'KASDAD',
-    }
-
-reaction_role_map2 = {
-    '🟤': 'JARKOM', '⚫': 'ANUM', '⚪': 'DAA', '💎': 'OS'
-    }
+ALL_REACTION_ROLES = [
+    ('🔵', 'SDA'), ('🔴', 'MD2'), ('🟡', 'Kalkulus2'), ('🟢', 'POK'), ('🟠', 'DDP2'),
+    ('🟦', 'Kalkulus1'), ('🟥', 'DDP1'), ('🟨', 'PSD'), ('🟩', 'MD1'), ('🟧', 'ALIN'),
+    ('🟫', 'MANBIS'), ('🟪', 'KOMBISTEK'), ('⬛', 'DDAK'), ('🔳', 'MPKT'),
+    ('💙', 'BASDAT'), ('❤️', 'SISTER'), ('💛', 'PKPL'), ('💚', 'TBA'), ('🧡', 'ADPRO'),
+    ('🟣', 'KASDAD'), ('🟤', 'JARKOM'), ('⚫', 'ANUM'), ('⚪', 'DAA'), ('💎', 'OS')
+]
 
 class Client(commands.Bot):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.role_message_ids = []
+        self.role_message_ids = self.load_message_ids()
+    
+    def load_message_ids(self):
+        try:
+            with open("message_ids.json", "r") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return []
+
+    def save_message_ids(self):
+        with open("message_ids.json", "w") as f:
+            json.dump(self.role_message_ids, f)
 
     async def on_ready(self):
         logger.info(f"Logged in as {self.user}")
@@ -83,7 +92,7 @@ class Client(commands.Bot):
             return
         
         guild = self.get_guild(payload.guild_id)
-        full_map = {**reaction_role_map1, **reaction_role_map2}
+        full_map = dict(ALL_REACTION_ROLES)
         emoji = str(payload.emoji)
 
         if emoji in full_map:
@@ -100,7 +109,7 @@ class Client(commands.Bot):
         
         guild = self.get_guild(payload.guild_id)
         member = guild.get_member(payload.user_id)
-        full_map = {**reaction_role_map1, **reaction_role_map2}
+        full_map = dict(ALL_REACTION_ROLES)
         emoji = str(payload.emoji)
 
         if emoji in full_map and member:
@@ -120,75 +129,36 @@ client = Client(command_prefix="!", intents = intents)
 
 GUILD_ID_BOT = discord.Object(id=GUILD_ID)
 
-@client.tree.command(name="course_roles1", description="Create a message that lets user choose their course roles", guild=GUILD_ID_BOT)
-async def course_roles1(interaction: discord.Interaction):
-    # Check if user is admin
-    if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("You must be an admin to run this command.", ephemeral=True)
-        return
-    
+@client.tree.command(name="update_roles", description="Update or create role messages automatically")
+async def update_roles(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     
-    description = (
-        "DESKRIPSI EMOJI MATA KULIAH\n\n"
-        ":blue_circle: SDA\n"
-        ":red_circle: MD2\n"
-        ":yellow_circle: Kalkulus2\n"
-        ":green_circle: POK\n"
-        ":orange_circle: DDP2\n"
-        ":blue_square: Kalkulus1\n"
-        ":red_square: DDP1\n"
-        ":yellow_square: PSD\n"
-        ":green_square: MD1\n"
-        ":orange_square: ALIN\n"
-        ":brown_square: MANBIS\n"
-        ":purple_square: KOMBISTEK\n"
-        ":black_large_square: DDAK\n"
-        ":white_square_button: MPKT\n"
-        ":blue_heart: BASDAT\n"
-        ":heart: SISTER\n"
-        ":yellow_heart: PKPL\n"
-        ":green_heart: TBA\n"
-        ":orange_heart: ADPRO\n"
-        ":purple_circle: KASDAD\n" # 20 roles mark
-    )
+    # Split all roles into chunks of 20
+    chunks = [ALL_REACTION_ROLES[i:i + 20] for i in range(0, len(ALL_REACTION_ROLES), 20)]
+    new_ids = []
 
-    embed = discord.Embed(title="Pilih Role Mata Kuliah", description=description, color=discord.Color.green())
-    message = await interaction.channel.send(embed=embed)
+    for index, chunk in enumerate(chunks):
+        description = f"**Pilih Role Mata Kuliah (Part {index + 1})**\n\n"
+        description += "\n".join([f"{emoji} {role}" for emoji, role in chunk])
+        
+        embed = discord.Embed(title="Role Selection", description=description, color=discord.Color.green())
 
-    for emoji in reaction_role_map1.keys():
-        await message.add_reaction(emoji)
+        try:
+            # Try to edit the existing message
+            msg_id = client.role_message_ids[index]
+            message = await interaction.channel.fetch_message(msg_id)
+            await message.edit(embed=embed)
+        except (IndexError, discord.NotFound):
+            # Send a new message if needed
+            message = await interaction.channel.send(embed=embed)
+        
+        for emoji, _ in chunk:
+            await message.add_reaction(emoji)
+        new_ids.append(message.id)
 
-    client.role_message_ids.append(message.id)
-
-    await interaction.followup.send("Course role message (part 1) created!", ephemeral=True)
-
-@client.tree.command(name="course_roles2", description="Create a message that lets user choose their course roles", guild=GUILD_ID_BOT)
-async def course_roles2(interaction: discord.Interaction):
-    # Check if user is admin
-    if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("You must be an admin to run this command.", ephemeral=True)
-        return
-    
-    await interaction.response.defer(ephemeral=True)
-    
-    description = (
-        "DESKRIPSI EMOJI MATA KULIAH\n\n"
-        ":brown_circle: JARKOM\n"
-        ":black_circle: ANUM\n"
-        ":white_circle: DAA\n"
-        ":gem: OS\n"
-    )
-
-    embed = discord.Embed(title="Pilih Role Mata Kuliah", description=description, color=discord.Color.green())
-    message = await interaction.channel.send(embed=embed)
-
-    for emoji in reaction_role_map2.keys():
-        await message.add_reaction(emoji)
-
-    client.role_message_ids.append(message.id)
-
-    await interaction.followup.send("Course role message (part 2) created!", ephemeral=True)
+    client.role_message_ids = new_ids
+    client.save_message_ids()
+    await interaction.followup.send("Role messages synchronized!", ephemeral=True)
 
 CHANNEL_ID=INFO_MATKUL
 @tasks.loop(minutes=15.0)
