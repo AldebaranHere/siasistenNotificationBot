@@ -302,6 +302,7 @@ async def background_loop():
                         await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Reguler sudah dibuka! Segera daftar di {daftar_link}")
                 
             await channel.send(f"Pengecekan selesai! Tunggu 15 menit untuk pengecekan selanjutnya.")
+            await channel.send(f"Silakan untuk unselect role mata kuliah kamu apabila kamu sudah mendaftar untuk menghindari spam.")
             await channel.send(f"=====================================================================================================================")
         
         except Exception as e:
