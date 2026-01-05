@@ -48,7 +48,7 @@ reaction_role_map1 = {
     '🔵': 'SDA', '🔴': 'MD2', '🟡': 'Kalkulus2', '🟢': 'POK', '🟠': 'DDP2',
     '🟦': 'Kalkulus1', '🟥': 'DDP1', '🟨': 'PSD', '🟩': 'MD1', '🟧': 'ALIN', '🟫': 'MANBIS', '🟪': 'KOMBISTEK', '⬛': 'DDAK', '🔳': 'MPKT',
     '💙': 'BASDAT', '❤️': 'SISTER', '💛': 'PKPL', '💚': 'TBA', '🧡': 'ADPRO',
-    '🟣': 'KASDAD', '🟤': 'JARKOM', '⚫': 'ANUM', '⚪': 'DAA'
+    '🟣': 'KASDAD',
     }
 
 reaction_role_map2 = {
