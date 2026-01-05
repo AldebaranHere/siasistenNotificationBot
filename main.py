@@ -79,7 +79,7 @@ class Client(commands.Bot):
         if payload.user_id == self.user.id:
             return
         
-        if payload.messsage_id not in self.role_message_ids:
+        if payload.message_id not in self.role_message_ids:
             return
         
         guild = self.get_guild(payload.guild_id)
