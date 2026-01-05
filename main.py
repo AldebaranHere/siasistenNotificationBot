@@ -56,6 +56,11 @@ reaction_role_map2 = {
     }
 
 class Client(commands.Bot):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.role_message_ids = []
+
     async def on_ready(self):
         logger.info(f"Logged in as {self.user}")
 
@@ -70,65 +75,40 @@ class Client(commands.Bot):
         if not background_loop.is_running():
             background_loop.start()
     
-    async def on_reaction_add(self, reaction, user):
-        if user.bot:
+    async def on_reaction_add(self, payload):
+        if payload.user_id == self.user.id:
             return
         
-        guild = reaction.message.guild
+        if payload.messsage_id not in self.role_message_ids:
+            return
+        
+        guild = self.get_guild(payload.guild_id)
+        full_map = {**reaction_role_map1, **reaction_role_map2}
+        emoji = str(payload.emoji)
 
-        if not guild:
-            return
-        
-        if hasattr(self, "colour_role_message_id") and reaction.message.id != self.colour_role_message_id:
-            return
-        
-        emoji = str(reaction.emoji)
-
-        if emoji in reaction_role_map1:
-            role_name = reaction_role_map1[emoji]
+        if emoji in full_map:
+            role_name = full_map[emoji]
             role = discord.utils.get(guild.roles, name=role_name)
 
-            if role and user:
-                await user.add_roles(role)
-                print(f"Assigned {role_name} to {user}")
-        
-        elif emoji in reaction_role_map2:
-            role_name = reaction_role_map2[emoji]
-            role = discord.utils.get(guild.roles, name=role_name)
-
-            if role and user:
-                await user.add_roles(role)
-                print(f"Assigned {role_name} to {user}")
+            if role:
+                await payload.member.add_roles(role)
+                print(f"Assigned {role_name} to {payload.member}")
     
-    async def on_reaction_remove(self, reaction, user):
-        if user.bot:
+    async def on_raw_reaction_remove(self, payload):
+        if payload.message_id not in self.role_message_ids:
             return
         
-        guild = reaction.message.guild
+        guild = self.get_guild(payload.guild_id)
+        member = guild.get_member(payload.user_id)
+        full_map = {**reaction_role_map1, **reaction_role_map2}
+        emoji = str(payload.emoji)
 
-        if not guild:
-            return
-        
-        if hasattr(self, "colour_role_message_id") and reaction.message.id != self.colour_role_message_id:
-            return
-        
-        emoji = str(reaction.emoji)
-
-        if emoji in reaction_role_map1:
-            role_name = reaction_role_map1[emoji]
+        if emoji in full_map and member:
+            role_name = full_map[emoji]
             role = discord.utils.get(guild.roles, name=role_name)
-
-            if role and user:
-                await user.remove_roles(role)
-                print(f"Removed {role_name} from {user}")
-        
-        elif emoji in reaction_role_map2:
-            role_name = reaction_role_map2[emoji]
-            role = discord.utils.get(guild.roles, name=role_name)
-
-            if role and user:
-                await user.remove_roles(role)
-                print(f"Removed {role_name} from {user}")
+            if role:
+                await member.remove_roles(role)
+                print(f"Removed {role_name} from {member}")
 
 
 intents = discord.Intents.default()
@@ -179,7 +159,7 @@ async def course_roles1(interaction: discord.Interaction):
     for emoji in reaction_role_map1.keys():
         await message.add_reaction(emoji)
 
-    client.colour_role_message_id = message.id
+    client.role_message_ids.append(message.id)
 
     await interaction.followup.send("Course role message (part 1) created!", ephemeral=True)
 
@@ -205,7 +185,7 @@ async def course_roles2(interaction: discord.Interaction):
     for emoji in reaction_role_map2.keys():
         await message.add_reaction(emoji)
 
-    client.colour_role_message_id = message.id
+    client.role_message_ids.append(message.id)
 
     await interaction.followup.send("Course role message (part 2) created!", ephemeral=True)
 
