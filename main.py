@@ -52,7 +52,7 @@ reaction_role_map1 = {
     }
 
 reaction_role_map2 = {
-    '🟤': 'JARKOM', '⚫': 'ANUM', '⚪': 'DAA'
+    '🟤': 'JARKOM', '⚫': 'ANUM', '⚪': 'DAA', '💎': 'OS'
     }
 
 class Client(commands.Bot):
@@ -177,6 +177,7 @@ async def course_roles2(interaction: discord.Interaction):
         ":brown_circle: JARKOM\n"
         ":black_circle: ANUM\n"
         ":white_circle: DAA\n"
+        ":gem: OS\n"
     )
 
     embed = discord.Embed(title="Pilih Role Mata Kuliah", description=description, color=discord.Color.green())
@@ -261,6 +262,7 @@ async def background_loop():
                     "JARKOM": "CSCM603154",
                     "ANUM": "CSCM603217",
                     "DAA": "CSCM603142",
+                    "OS": "CSCM602055",
                 }
 
             guild = channel.guild
