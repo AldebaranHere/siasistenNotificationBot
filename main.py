@@ -129,7 +129,7 @@ client = Client(command_prefix="!", intents = intents)
 
 GUILD_ID_BOT = discord.Object(id=GUILD_ID)
 
-@client.tree.command(name="update_roles", description="Update or create role messages automatically")
+@client.tree.command(name="update_roles", description="Update or create role messages automatically", guild=GUILD_ID_BOT)
 async def update_roles(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     
