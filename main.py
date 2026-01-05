@@ -44,6 +44,13 @@ except ValueError as e:
     logger.error(f"Invalid format for numeric environment variables: {e}")
     raise
 
+reaction_role_map = {
+    '🔵': 'SDA', '🔴': 'MD2', '🟡': 'Kalkulus2', '🟢': 'POK', '🟠': 'DDP2',
+    '🟦': 'Kalkulus1', '🟥': 'DDP1', '🟨': 'PSD', '🟩': 'MD1', '🟧': 'ALIN', '🟫': 'MANBIS', '🟪': 'KOMBISTEK', '⬛': 'DDAK', '🔳': 'MPKT',
+    '💙': 'BASDAT', '❤️': 'SISTER', '💛': 'PKPL', '💚': 'TBA', '🧡': 'ADPRO',
+    '🟣': 'KASDAD', '🟤': 'JARKOM', '⚫': 'ANUM', '⚪': 'DAA'
+    }
+
 class Client(commands.Bot):
     async def on_ready(self):
         logger.info(f"Logged in as {self.user}")
@@ -58,10 +65,108 @@ class Client(commands.Bot):
         
         if not background_loop.is_running():
             background_loop.start()
+    
+    async def on_reaction_add(self, reaction, user):
+        if user.bot:
+            return
+        
+        guild = reaction.message.guild
+
+        if not guild:
+            return
+        
+        if hasattr(self, "colour_role_message_id") and reaction.message.id != self.colour_role_message_id:
+            return
+        
+        emoji = str(reaction.emoji)
+
+        if emoji in reaction_role_map:
+            role_name = reaction_role_map[emoji]
+            role = discord.utils.get(guild.roles, name=role_name)
+
+            if role and user:
+                await user.add_roles(role)
+                print(f"Assigned {role_name} to {user}")
+    
+    async def on_reaction_remove(self, reaction, user):
+        if user.bot:
+            return
+        
+        guild = reaction.message.guild
+
+        if not guild:
+            return
+        
+        if hasattr(self, "colour_role_message_id") and reaction.message.id != self.colour_role_message_id:
+            return
+        
+        emoji = str(reaction.emoji)
+
+        if emoji in reaction_role_map:
+            role_name = reaction_role_map[emoji]
+            role = discord.utils.get(guild.roles, name=role_name)
+
+            if role and user:
+                await user.remove_roles(role)
+                print(f"Removed {role_name} from {user}")
+
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.reactions = True
+intents.guilds = True
+intents.members = True
 client = Client(command_prefix="!", intents = intents)
+
+GUILD_ID_BOT = discord.Object(id=GUILD_ID)
+
+@client.tree.command(name="course_roles", description="Create a message that lets user choose their course roles", guild=GUILD_ID_BOT)
+async def course_roles(interaction: discord.Interaction):
+    # Check if user is admin
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("You must be an admin to run this command.", ephemeral=True)
+        return
+    
+    await interaction.response.defer(ephemeral=True)
+    
+    description = (
+        "DESKRIPSI EMOJI MATA KULIAH\n\n"
+        ":blue_circle: SDA\n"
+        ":red_circle: MD2\n"
+        ":yellow_circle: Kalkulus2\n"
+        ":green_circle: POK\n"
+        ":orange_circle: DDP2\n"
+        ":blue_square: Kalkulus1\n"
+        ":red_square: DDP1\n"
+        ":yellow_square: PSD\n"
+        ":green_square: MD1\n"
+        ":orange_square: ALIN\n"
+        ":brown_square: MANBIS\n"
+        ":purple_square: KOMBISTEK\n"
+        ":black_large_square: DDAK\n"
+        ":white_square_button: MPKT\n"
+        ":blue_heart: BASDAT\n"
+        ":heart: SISTER\n"
+        ":yellow_heart: PKPL\n"
+        ":green_heart: TBA\n"
+        ":orange_heart: ADPRO\n"
+        ":purple_circle: KASDAD\n"
+        ":brown_circle: JARKOM\n"
+        ":black_circle: ANUM\n"
+        ":white_circle: DAA\n"
+    )
+
+    embed = discord.Embed(title="Pilih Role Mata Kuliah", description=description, color=discord.Color.green())
+    message = await interaction.channel.send(embed=embed)
+
+    for emoji in reaction_role_map.keys():
+        await message.add_reaction(emoji)
+
+    client.colour_role_message_id = message.id
+
+    await interaction.followup.send("Course role message created!", ephemeral=True)
+
+
 
 CHANNEL_ID=INFO_MATKUL
 @tasks.loop(minutes=15.0)
@@ -122,6 +227,8 @@ async def background_loop():
                     "ALIN": "CSGE602012",
                     "MANBIS": "CSIM601190",
                     "KOMBISTEK": "CSIM601191",
+                    "DDAK": "CSI2601501",
+                    "MPKT": "UIGE600006",
 
                     "BASDAT": "CSGE602070",
                     "SISTER": "CSGE602024",
