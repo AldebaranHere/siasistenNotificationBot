@@ -51,7 +51,7 @@ ALL_REACTION_ROLES = [
     ('🟫', 'MANBIS'), ('🟪', 'KOMBISTEK'), ('⬛', 'DDAK'), ('🔳', 'MPKT'),
     ('💙', 'BASDAT'), ('❤️', 'SISTER'), ('💛', 'PKPL'), ('💚', 'TBA'), ('🧡', 'ADPRO'),
     ('🟣', 'KASDAD'), ('🟤', 'JARKOM'), ('⚫', 'ANUM'), ('⚪', 'DAA'), ('💎', 'OS'),
-    ('✨', "RPL"), ('⭐', "PPSI")
+    ('✨', "RPL"), ('⭐', "PPSI"), ('🌟', "STATPROB"), ('💫', "MANPRO")
 ]
 
 class Client(commands.Bot):
@@ -229,13 +229,15 @@ async def background_loop():
                     "PKPL": "CSGE602023",
                     "TBA": "CSCM602241",
                     "ADPRO": "CSCM602223",
+                    "STATPROB": "CSCM602013",
 
                     "KASDAD": "CSGE603130",
                     "JARKOM": "CSCM603154",
                     "ANUM": "CSCM603217",
                     "DAA": "CSCM603142",
                     "OS": "CSCM602055",
-                    "RPL": "CSCM603125"
+                    "RPL": "CSCM603125",
+                    "MANPRO": "CSIM602281"
                 }
 
             guild = channel.guild
