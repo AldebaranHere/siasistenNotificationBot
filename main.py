@@ -51,7 +51,7 @@ ALL_REACTION_ROLES = [
     ('🟫', 'MANBIS'), ('🟪', 'KOMBISTEK'), ('⬛', 'DDAK'), ('🔳', 'MPKT'),
     ('💙', 'BASDAT'), ('❤️', 'SISTER'), ('💛', 'PKPL'), ('💚', 'TBA'), ('🧡', 'ADPRO'),
     ('🟣', 'KASDAD'), ('🟤', 'JARKOM'), ('⚫', 'ANUM'), ('⚪', 'DAA'), ('💎', 'OS'),
-    ('✨', "RPL"),
+    ('✨', "RPL"), ('⭐', "PPSI")
 ]
 
 class Client(commands.Bot):
@@ -222,6 +222,7 @@ async def background_loop():
                     "KOMBISTEK": "CSIM601191",
                     "DDAK": "CSI2601501",
                     "MPKT": "UIGE600006",
+                    "PPSI": "CSIM601280",
 
                     "BASDAT": "CSGE602070",
                     "SISTER": "CSGE602024",
