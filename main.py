@@ -206,44 +206,68 @@ async def background_loop():
             table_rows = final_soup.find_all('tr')
             rows_courses_only = table_rows[1:] # Skip header row
         
-            mata_kuliah = {
-                    "SDA": "CSGE602040",
-                    "MD2": "CSGE601011",
-                    "Kalkulus2": "CSCM601213",
-                    "POK": "CSCM601252",
-                    "DDP2": "CSGE601021",
-
-                    "Kalkulus1": "CSGE601012",
-                    "DDP1": "CSGE601020",
-                    "PSD": "CSCM601150",
-                    "MD1": "CSGE601010",
-                    "ALIN": "CSGE602012",
-                    "MANBIS": "CSIM601190",
-                    "KOMBISTEK": "CSIM601191",
-                    "DDAK": "CSI2601501",
-                    "MPKT": "UIGE600006",
-                    "PPSI": "CSIM601280",
-
-                    "BASDAT": "CSGE602070",
-                    "SISTER": "CSGE602024",
-                    "PKPL": "CSGE602023",
-                    "TBA": "CSCM602241",
-                    "ADPRO": "CSCM602223",
-                    "STATPROB": "CSCM602013",
-
-                    "KASDAD": "CSGE603130",
-                    "JARKOM": "CSCM603154",
-                    "ANUM": "CSCM603217",
-                    "DAA": "CSCM603142",
-                    "OS": "CSCM602055",
-                    "RPL": "CSCM603125",
-                    "MANPRO": "CSIM602281"
-                }
+            mata_kuliah = {'CSGE602040': 'SDA', 
+                           
+                           'CSGE601011': 'MD2', 
+                           
+                           'CSCM601213': 'Kalkulus2', 
+                           
+                           'CSCM601252': 'POK', 
+                           
+                           'CSGE601021': 'DDP2', 
+                           
+                           'CSGE601012': 'Kalkulus1', 
+                           
+                           'CSGE601020': 'DDP1', 
+                           
+                           'CSCM601150': 'PSD', 
+                           
+                           'CSGE601010': 'MD1', 
+                           
+                           'CSGE602012': 'ALIN', 
+                           
+                           'CSIM601190': 'MANBIS', 
+                           
+                           'CSIM601191': 'KOMBISTEK', 
+                           
+                           'CSI2601501': 'DDAK', 
+                           
+                           'UIGE600006': 'MPKT', 
+                           
+                           'CSIM601280': 'PPSI', 
+                           
+                           'CSGE602070': 'BASDAT', 
+                           
+                           'CSGE602024': 'SISTER', 
+                           
+                           'CSGE602023': 'PKPL', 
+                           
+                           'CSCM602241': 'TBA', 
+                           
+                           'CSCM602223': 'ADPRO', 
+                           
+                           'CSCM602013': 'STATPROB', 
+                           'CSGE602013': 'STATPROB',
+                           
+                           'CSGE603130': 'KASDAD', 
+                           
+                           'CSCM603154': 'JARKOM', 
+                           
+                           'CSCM603217': 'ANUM', 
+                           
+                           'CSCM603142': 'DAA', 
+                           
+                           'CSCM602055': 'OS', 
+                           
+                           'CSCM603125': 'RPL', 
+                           
+                           'CSIM602281': 'MANPRO'}
 
             guild = channel.guild
             role_data = {r.name: r.id for r in guild.roles[1:]}
-            course_codes = set(mata_kuliah.values())
-            mk_code_to_name = {v: k for k, v in mata_kuliah.items()}
+
+            course_codes = set(mata_kuliah.keys())
+            # mk_code_to_name = {v: k for k, v in mata_kuliah.items()}
 
             for row in rows_courses_only:
                 cells = row.find_all('td')
@@ -253,7 +277,7 @@ async def background_loop():
                     
                     course_info = cells[1].text
                     mk_code = course_info.split()[0]
-                    mk_name = mk_code_to_name.get(mk_code, None)
+                    mk_name = mata_kuliah.get(mk_code, None)
                     status = cells[5].text.strip()
 
                     # Skip if course not in our tracking list
