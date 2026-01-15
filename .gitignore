@@ -1,6 +1,7 @@
 # Secrets and Credentials
 .env
 bot.log
+*.json
 
 # Python Virtual Environment
 venv/

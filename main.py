@@ -32,6 +32,7 @@ SIASISTEN_LOGIN_URL=os.getenv('SIASISTEN_LOGIN_URL')
 SIASISTEN_ROOT_URL=os.getenv('SIASISTEN_ROOT_URL')
 INFO_MATKUL = os.getenv('INFO_MATKUL')
 GUILD_ID = os.getenv('GUILD_ID')
+TEMP_LINK=os.getenv('TEMP_LINK')
 
 # Validate critical environment variables
 if not all([DISCORD_TOKEN, SIASISTEN_USERNAME, SIASISTEN_PASSWORD, SIASISTEN_URL, INFO_MATKUL, GUILD_ID, SIASISTEN_LOGIN_URL]):
@@ -298,6 +299,8 @@ async def background_loop():
                         continue
 
                     if ("Internasional" in course_info) and ("Buka" in status):
+                        if "daftarLowongan" not in daftar_link:
+                            daftar_link=TEMP_LINK
                         await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Internasional sudah dibuka! Segera daftar di {daftar_link}")
                     elif ("Buka" in status):
                         await channel.send(f"<@&{role_data[mk_name]}> {mk_name} Reguler sudah dibuka! Segera daftar di {daftar_link}")
