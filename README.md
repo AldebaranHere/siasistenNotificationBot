@@ -16,19 +16,13 @@
 - Every 15 minutes it checks the siasisten website for newly opened course listings.
 - When a course is found open, the bot posts the course link and mentions the people who want to apply.
 
-**Setup**
-1. Install Python dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-2. Provide configuration:
-- Create or set the Discord bot token and the target channel ID as environment variables. 
+**Screenshot of Example Usage**
+![alt text](exampleOfTextfromBot.png)
 
 **Notes**
 - The bot reduces the delay between a course opening and users seeing the posting, improving the chance to apply promptly.
 - If you change the check interval or notification rules, review `main.py` for the configuration variables.
+- The bot is hosted on Katabump so that it runs 24/7 without needing a local computer to constantly stay on.
 
 **Contributing**
 - Fixes and improvements are welcome. If you make changes, test locally.
