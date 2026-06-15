@@ -26,9 +26,6 @@ pip install -r requirements.txt
 2. Provide configuration:
 - Create or set the Discord bot token and the target channel ID as environment variables. 
 
-**Running**
-- Run the bot with `python main.py`. The bot checks the site periodically (default 15 minutes) and posts updates to the configured Discord channel.
-
 **Notes**
 - The bot reduces the delay between a course opening and users seeing the posting, improving the chance to apply promptly.
 - If you change the check interval or notification rules, review `main.py` for the configuration variables.
